@@ -3,46 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shorts Vibe Searcher (Pro)</title>
+    <title>Shorts Vibe Searcher</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-900 p-4 md:p-8 font-sans">
-    <div class="max-w-5xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-            <h1 class="text-2xl font-bold text-rose-600">Shorts <span class="text-gray-900">Vibe</span> Searcher</h1>
-            <div class="flex w-full md:w-auto gap-2">
-                <input id="keyword" type="text" placeholder="Search Shorts..." 
-                    class="flex-1 md:w-64 bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-rose-500 shadow-sm">
-                <button onclick="fetchShorts()" class="bg-rose-600 text-white px-6 py-2 rounded-lg font-semibold text-sm hover:bg-rose-700 shadow-md transition-all">
-                    Search
-                </button>
-            </div>
+<body class="bg-gray-50 text-gray-900 font-sans pb-20">
+
+    <div class="max-w-2xl mx-auto px-4 pt-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-extrabold text-rose-600 tracking-tight">
+                Shorts <span class="text-gray-900">Vibe</span>
+            </h1>
+            <p class="text-gray-500 text-sm mt-1">Professional Shorts Discovery Tool</p>
         </header>
 
-        <div id="status" class="hidden text-center text-gray-400 text-xs mb-4 uppercase tracking-widest">Fetching from Google...</div>
-
-        <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-bold text-gray-400 uppercase border-b border-gray-200">
-            <div class="col-span-1">Preview</div>
-            <div class="col-span-8">Video Title & Channel</div>
-            <div class="col-span-3 text-right">Action</div>
+        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <label class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
+                    YouTube API Key
+                    <div class="relative tooltip cursor-help">
+                        <span class="bg-gray-200 text-gray-600 w-4 h-4 rounded-full flex items-center justify-center text-[10px]">?</span>
+                        <div class="tooltip-text invisible opacity-0 absolute left-0 bottom-6 w-64 p-3 bg-gray-800 text-white text-[11px] rounded-xl shadow-xl transition-all z-50 leading-relaxed">
+                            <strong>How to get a key:</strong><br>
+                            1. Go to Google Cloud Console<br>
+                            2. Create a project & Enable "YouTube Data API v3"<br>
+                            3. Go to Credentials > Create API Key.<br>
+                            <span class="text-rose-400 font-bold italic mt-2 block">It's 100% free for personal use!</span>
+                        </div>
+                    </div>
+                </label>
+                <span id="keyStatus" class="text-[10px] font-bold text-gray-300">NOT SET</span>
+            </div>
+            <input id="apiKeyInput" type="password" placeholder="Paste your AI Key here..." 
+                class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-rose-500 outline-none transition-all">
         </div>
 
-        <div id="videoList" class="divide-y divide-gray-100 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <p class="p-8 text-center text-gray-400 italic">Enter a keyword to see the vibes.</p>
+        <div class="flex gap-2 mb-8">
+            <input id="keyword" type="text" placeholder="What's the vibe?" 
+                class="flex-1 bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm outline-none focus:ring-2 focus:ring-rose-500 transition-all font-medium">
+            <button onclick="fetchShorts()" class="bg-rose-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-100">
+                <span class="md:block hidden">Search</span>
+                <span class="md:hidden">🔍</span>
+            </button>
         </div>
+
+        <div id="status" class="hidden text-center text-xs text-gray-400 mb-6 uppercase tracking-widest animate-pulse">Connecting to Google...</div>
+        
+        <div id="videoList" class="space-y-3">
+            </div>
     </div>
 
     <script>
-        // PASTE YOUR API KEY HERE
-        const API_KEY = 'AIzaSyCFhNY1E0zYsbftUg_qaTJatVC1TmIL7hk'; 
+        // On Load: Check if key exists in 'Magic Backpack' (LocalStorage)
+        window.onload = () => {
+            const savedKey = localStorage.getItem('shorts-vibe-key');
+            if (savedKey) {
+                document.getElementById('apiKeyInput').value = savedKey;
+                updateKeyStatus(true);
+            }
+        };
+
+        // Save key to local storage when user types it
+        document.getElementById('apiKeyInput').addEventListener('input', (e) => {
+            localStorage.setItem('shorts-vibe-key', e.target.value);
+            updateKeyStatus(!!e.target.value);
+        });
+
+        function updateKeyStatus(isSet) {
+            const status = document.getElementById('keyStatus');
+            status.innerText = isSet ? "✅ KEY SAVED" : "❌ NOT SET";
+            status.className = isSet ? "text-[10px] font-bold text-emerald-500" : "text-[10px] font-bold text-rose-300";
+        }
 
         async function fetchShorts() {
             const query = document.getElementById('keyword').value;
+            const key = document.getElementById('apiKeyInput').value;
+            
+            if (!key) return alert("Please enter your YouTube API Key first!");
             if (!query) return;
-            if (API_KEY === '') {
-                alert("Please add your Google API Key to the code first!");
-                return;
-            }
 
             const list = document.getElementById('videoList');
             const status = document.getElementById('status');
@@ -51,17 +92,16 @@
             status.classList.remove('hidden');
 
             try {
-                // We add '#shorts' and 'shorts' to the query + use 'videoDuration=short' (under 4 mins)
                 const searchQuery = encodeURIComponent(query + " shorts");
-                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${searchQuery}&type=video&videoDuration=short&maxResults=30&key=${API_KEY}`;
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${searchQuery}&type=video&videoDuration=short&maxResults=30&key=${key}`;
 
                 const response = await fetch(url);
                 const data = await response.json();
                 
                 status.classList.add('hidden');
 
-                if (!data.items || data.items.length === 0) {
-                    list.innerHTML = '<p class="p-8 text-center text-gray-400">No Shorts found.</p>';
+                if (data.error) {
+                    alert("API Error: " + data.error.message);
                     return;
                 }
 
@@ -69,31 +109,24 @@
                     const id = item.id.videoId;
                     const title = item.snippet.title;
                     const channel = item.snippet.channelTitle;
-                    const thumb = item.snippet.thumbnails.default.url; // Small thumbnail
+                    const thumb = item.snippet.thumbnails.medium.url; // Better for mobile
                     const shortLink = `https://www.youtube.com/shorts/${id}`;
 
                     list.innerHTML += `
-                        <div class="grid grid-cols-4 md:grid-cols-12 gap-4 items-center p-3 hover:bg-rose-50 transition-colors group">
-                            <div class="col-span-1">
-                                <img src="${thumb}" class="w-12 h-12 rounded-lg object-cover border border-gray-100">
+                        <a href="${shortLink}" target="_blank" class="flex items-center gap-4 bg-white p-3 rounded-2xl border border-gray-100 hover:border-rose-200 hover:shadow-md transition-all group">
+                            <img src="${thumb}" class="w-16 h-16 md:w-20 md:h-20 rounded-xl object-cover flex-shrink-0 shadow-sm">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-bold text-gray-800 line-clamp-2 leading-tight group-hover:text-rose-600 transition-colors">${title}</h3>
+                                <p class="text-[11px] text-gray-400 mt-1 font-medium">@${channel}</p>
                             </div>
-                            
-                            <div class="col-span-2 md:col-span-8">
-                                <h3 class="text-sm font-medium text-gray-800 line-clamp-1 group-hover:text-rose-600 transition-colors">${title}</h3>
-                                <p class="text-xs text-gray-400">@${channel}</p>
+                            <div class="text-gray-300 group-hover:text-rose-600 pr-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
                             </div>
-
-                            <div class="col-span-1 md:col-span-3 text-right">
-                                <a href="${shortLink}" target="_blank" class="inline-flex items-center text-xs font-bold text-rose-600 hover:underline">
-                                    OPEN <span class="ml-1">↗</span>
-                                </a>
-                            </div>
-                        </div>
+                        </a>
                     `;
                 });
             } catch (error) {
-                status.innerText = "Error: Check your API Key or connection.";
-                console.error(error);
+                status.innerText = "Error. Check connection.";
             }
         }
     </script>
