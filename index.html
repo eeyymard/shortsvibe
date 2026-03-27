@@ -3,126 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shorts Vibe Searcher</title>
+    <title>Shorts Vibe Searcher (Pro)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Smooth fade-in for the video cards */
-        .fade-in { animation: fadeIn 0.6s ease-out forwards; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
 </head>
-<body class="bg-slate-50 text-slate-900 p-6 font-sans">
+<body class="bg-gray-50 text-gray-900 p-4 md:p-8 font-sans">
     <div class="max-w-5xl mx-auto">
-        <header class="text-center mb-10">
-            <h1 class="text-4xl font-extrabold mb-2 tracking-tight text-slate-900">
-                Shorts <span class="text-rose-600">Vibe</span> Searcher
-            </h1>
-            <p class="text-slate-500 font-medium">Find your next favorite short-form video.</p>
-        </header>
-        
-        <div class="flex flex-col md:flex-row gap-3 mb-12 max-w-2xl mx-auto">
-            <input id="keyword" type="text" placeholder="Search for a vibe (e.g. Street Food, Gym, ASMR)..." 
-                class="flex-1 bg-white border border-slate-200 rounded-2xl px-6 py-4 shadow-sm outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all">
-            <button onclick="fetchShorts()" class="bg-rose-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-rose-200 hover:bg-rose-700 active:scale-95 transition-all">
-                Search
-            </button>
-        </div>
-
-        <div id="status" class="hidden text-center text-slate-400 mb-8 animate-pulse italic">
-            Scanning for viral vibes...
-        </div>
-
-        <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <h1 class="text-2xl font-bold text-rose-600">Shorts <span class="text-gray-900">Vibe</span> Searcher</h1>
+            <div class="flex w-full md:w-auto gap-2">
+                <input id="keyword" type="text" placeholder="Search Shorts..." 
+                    class="flex-1 md:w-64 bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-rose-500 shadow-sm">
+                <button onclick="fetchShorts()" class="bg-rose-600 text-white px-6 py-2 rounded-lg font-semibold text-sm hover:bg-rose-700 shadow-md transition-all">
+                    Search
+                </button>
             </div>
+        </header>
+
+        <div id="status" class="hidden text-center text-gray-400 text-xs mb-4 uppercase tracking-widest">Fetching from Google...</div>
+
+        <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-bold text-gray-400 uppercase border-b border-gray-200">
+            <div class="col-span-1">Preview</div>
+            <div class="col-span-8">Video Title & Channel</div>
+            <div class="col-span-3 text-right">Action</div>
+        </div>
+
+        <div id="videoList" class="divide-y divide-gray-100 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <p class="p-8 text-center text-gray-400 italic">Enter a keyword to see the vibes.</p>
+        </div>
     </div>
 
-<script>
-    // A list of different 'Public Kitchens' (Piped Instances)
-    const instances = [
-        'https://pipedapi.kavin.rocks',
-        'https://api.piped.victr.me',
-        'https://piped-api.garudalinux.org',
-        'https://pipedapi.leptons.xyz'
-    ];
+    <script>
+        // PASTE YOUR API KEY HERE
+        const API_KEY = 'AIzaSyCFhNY1E0zYsbftUg_qaTJatVC1TmIL7hk'; 
 
-    async function fetchShorts() {
-    const query = document.getElementById('keyword').value;
-    if (!query) return;
-
-    const grid = document.getElementById('videoGrid');
-    const status = document.getElementById('status');
-    
-    grid.innerHTML = '';
-    status.classList.remove('hidden');
-    status.innerText = "Finding the best vibes...";
-
-    // These are reliable Invidious instances
-    const invidiousInstances = [
-        'https://invidious.flokinet.to',
-        'https://inv.riverside.rocks',
-        'https://iv.melmac.space',
-        'https://invidious.sethforprivacy.com'
-    ];
-
-    let success = false;
-
-    for (const baseUrl of invidiousInstances) {
-        try {
-            console.log(`Trying Invidious: ${baseUrl}`);
-            const searchQuery = encodeURIComponent(query + " shorts");
-            
-            // Invidious search URL structure
-            const response = await fetch(`${baseUrl}/api/v1/search?q=${searchQuery}&type=video`);
-            
-            if (!response.ok) throw new Error("Server busy");
-
-            const data = await response.json();
-            
-            if (data && data.length > 0) {
-                renderInvidiousVideos(data.slice(0, 30));
-                success = true;
-                status.classList.add('hidden');
-                break;
+        async function fetchShorts() {
+            const query = document.getElementById('keyword').value;
+            if (!query) return;
+            if (API_KEY === '') {
+                alert("Please add your Google API Key to the code first!");
+                return;
             }
-        } catch (error) {
-            console.warn(`Invidious ${baseUrl} failed...`);
-        }
-    }
 
-    if (!success) {
-        status.innerText = "The vibes are currently offline. Let's try the Official API next!";
-    }
-}
+            const list = document.getElementById('videoList');
+            const status = document.getElementById('status');
+            
+            list.innerHTML = '';
+            status.classList.remove('hidden');
 
-function renderInvidiousVideos(videos) {
-    const grid = document.getElementById('videoGrid');
-    videos.forEach((video, index) => {
-        // Invidious provides 'videoId' directly
-        const videoUrl = `https://www.youtube.com/shorts/${video.videoId}`;
-        
-        // Thumbnail handling (Invidious usually has multiple)
-        const thumbUrl = video.videoThumbnails ? video.videoThumbnails[0].url : '';
-        
-        grid.innerHTML += `
-            <div class="fade-in bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300" style="animation-delay: ${index * 0.05}s">
-                <a href="${videoUrl}" target="_blank" class="block">
-                    <div class="relative aspect-[9/16] bg-slate-200">
-                        <img src="${thumbUrl}" class="w-full h-full object-cover" alt="thumbnail">
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                        <div class="absolute bottom-4 left-4 right-4 text-left">
-                            <h3 class="text-white text-sm font-semibold line-clamp-2">${video.title}</h3>
-                            <p class="text-white/70 text-xs mt-1">@${video.author}</p>
+            try {
+                // We add '#shorts' and 'shorts' to the query + use 'videoDuration=short' (under 4 mins)
+                const searchQuery = encodeURIComponent(query + " shorts");
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${searchQuery}&type=video&videoDuration=short&maxResults=30&key=${API_KEY}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                status.classList.add('hidden');
+
+                if (!data.items || data.items.length === 0) {
+                    list.innerHTML = '<p class="p-8 text-center text-gray-400">No Shorts found.</p>';
+                    return;
+                }
+
+                data.items.forEach(item => {
+                    const id = item.id.videoId;
+                    const title = item.snippet.title;
+                    const channel = item.snippet.channelTitle;
+                    const thumb = item.snippet.thumbnails.default.url; // Small thumbnail
+                    const shortLink = `https://www.youtube.com/shorts/${id}`;
+
+                    list.innerHTML += `
+                        <div class="grid grid-cols-4 md:grid-cols-12 gap-4 items-center p-3 hover:bg-rose-50 transition-colors group">
+                            <div class="col-span-1">
+                                <img src="${thumb}" class="w-12 h-12 rounded-lg object-cover border border-gray-100">
+                            </div>
+                            
+                            <div class="col-span-2 md:col-span-8">
+                                <h3 class="text-sm font-medium text-gray-800 line-clamp-1 group-hover:text-rose-600 transition-colors">${title}</h3>
+                                <p class="text-xs text-gray-400">@${channel}</p>
+                            </div>
+
+                            <div class="col-span-1 md:col-span-3 text-right">
+                                <a href="${shortLink}" target="_blank" class="inline-flex items-center text-xs font-bold text-rose-600 hover:underline">
+                                    OPEN <span class="ml-1">↗</span>
+                                </a>
+                            </div>
                         </div>
-                    </div>
-                </a>
-            </div>
-        `;
-    });
-}
-</script>
-    
+                    `;
+                });
+            } catch (error) {
+                status.innerText = "Error: Check your API Key or connection.";
+                console.error(error);
+            }
+        }
+    </script>
 </body>
 </html>
