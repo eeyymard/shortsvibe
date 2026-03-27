@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Vibe Searcher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen p-6 font-sans">
+    <div class="max-w-2xl mx-auto mt-12">
+        <h1 class="text-3xl font-bold text-center mb-8 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-pink-500">
+            Video Vibe Searcher
+        </h1>
+        
+        <div class="flex gap-2 mb-12">
+            <input id="keyword" type="text" placeholder="Type a vibe (e.g. Coding ASMR)" 
+                class="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-red-500 transition-all">
+            <button onclick="generateLinks()" class="bg-white text-black px-8 py-4 rounded-2xl font-bold hover:bg-zinc-200 active:scale-95 transition-all">
+                Search
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6">
+            <div class="space-y-4">
+                <h2 class="text-red-500 font-bold uppercase tracking-widest text-xs">YouTube Shorts</h2>
+                <div id="ytList" class="space-y-3"></div>
+            </div>
+            <div class="space-y-4">
+                <h2 class="text-pink-500 font-bold uppercase tracking-widest text-xs">TikTok Clips</h2>
+                <div id="ttList" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function generateLinks() {
+            const word = document.getElementById('keyword').value;
+            if (!word) return alert("Please enter a keyword!");
+
+            const ytList = document.getElementById('ytList');
+            const ttList = document.getElementById('ttList');
+            
+            ytList.innerHTML = '';
+            ttList.innerHTML = '';
+
+            // We generate 30 clever search shortcuts
+            for (let i = 1; i <= 30; i++) {
+                const ytLink = `https://www.youtube.com/results?search_query=${encodeURIComponent(word)}+shorts`;
+                const ttLink = `https://www.tiktok.com/search?q=${encodeURIComponent(word)}`;
+
+                ytList.innerHTML += `<a href="${ytLink}" target="_blank" class="block p-3 bg-zinc-900 rounded-xl border border-zinc-800 hover:border-red-500/50 text-sm opacity-70 hover:opacity-100 transition-all">View YT Short #${i}</a>`;
+                ttList.innerHTML += `<a href="${ttLink}" target="_blank" class="block p-3 bg-zinc-900 rounded-xl border border-zinc-800 hover:border-pink-500/50 text-sm opacity-70 hover:opacity-100 transition-all">View TikTok #${i}</a>`;
+            }
+        }
+    </script>
+</body>
+</html>
