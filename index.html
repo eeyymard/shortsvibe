@@ -6,128 +6,162 @@
     <title>Shorts Vibe Searcher</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+        /* Smooth transition for the whole page theme */
+        body { transition: background-color 0.5s, color 0.5s; }
+        .mode-transition { transition: all 0.4s ease-in-out; }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-900 font-sans pb-20">
+<body id="mainBody" class="bg-gray-50 text-slate-900 font-sans pb-20">
 
     <div class="max-w-2xl mx-auto px-4 pt-8">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl font-extrabold text-rose-600 tracking-tight">
-                Shorts <span class="text-gray-900">Vibe</span>
+        <header class="text-center mb-6">
+            <h1 id="appTitle" class="text-3xl font-extrabold text-rose-600 tracking-tight transition-colors">
+                Shorts <span class="text-inherit">Vibe</span>
             </h1>
-            <p class="text-gray-500 text-sm mt-1">Professional Shorts Discovery Tool</p>
         </header>
 
-        <div class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-6">
-            <div class="flex items-center justify-between mb-3">
-                <label class="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1">
-                    YouTube API Key
-                    <div class="relative tooltip cursor-help">
-                        <span class="bg-gray-200 text-gray-600 w-4 h-4 rounded-full flex items-center justify-center text-[10px]">?</span>
-                        <div class="tooltip-text invisible opacity-0 absolute left-0 bottom-6 w-64 p-3 bg-gray-800 text-white text-[11px] rounded-xl shadow-xl transition-all z-50 leading-relaxed">
-                            <strong>How to get a key:</strong><br>
-                            1. Go to Google Cloud Console<br>
-                            2. Create a project & Enable "YouTube Data API v3"<br>
-                            3. Go to Credentials > Create API Key.<br>
-                            <span class="text-rose-400 font-bold italic mt-2 block">It's 100% free for personal use!</span>
-                        </div>
-                    </div>
-                </label>
-                <span id="keyStatus" class="text-[10px] font-bold text-gray-300">NOT SET</span>
+        <div class="flex justify-center mb-8">
+            <div class="bg-gray-200 p-1 rounded-2xl flex items-center cursor-pointer shadow-inner relative w-48 h-12" onclick="toggleMode()">
+                <div id="toggleIndicator" class="absolute bg-white shadow-md rounded-xl w-[48%] h-10 left-1 mode-transition"></div>
+                <div class="z-10 w-1/2 text-center text-xs font-bold tracking-widest text-gray-500" id="freeLabel">FREE</div>
+                <div class="z-10 w-1/2 text-center text-xs font-bold tracking-widest text-gray-500" id="proLabel">PRO</div>
             </div>
-            <input id="apiKeyInput" type="password" placeholder="Paste your AI Key here..." 
-                class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-rose-500 outline-none transition-all">
+        </div>
+
+        <div id="apiBox" class="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-6 mode-transition opacity-50 grayscale pointer-events-none">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2 block">Google Cloud API Key</label>
+            <input id="apiKeyInput" type="password" placeholder="Pro Mode requires an API Key..." 
+                class="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none">
         </div>
 
         <div class="flex gap-2 mb-8">
             <input id="keyword" type="text" placeholder="What's the vibe?" 
-                class="flex-1 bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm outline-none focus:ring-2 focus:ring-rose-500 transition-all font-medium">
-            <button onclick="fetchShorts()" class="bg-rose-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-100">
-                <span class="md:block hidden">Search</span>
-                <span class="md:hidden">🔍</span>
+                class="flex-1 bg-white border border-gray-200 rounded-2xl px-5 py-4 shadow-sm outline-none focus:ring-2 focus:ring-rose-500 transition-all font-medium text-slate-900">
+            <button onclick="fetchShorts()" id="searchBtn" class="bg-rose-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-100">
+                🔍
             </button>
         </div>
 
-        <div id="status" class="hidden text-center text-xs text-gray-400 mb-6 uppercase tracking-widest animate-pulse">Connecting to Google...</div>
+        <div id="status" class="hidden text-center text-xs text-gray-400 mb-6 uppercase tracking-widest animate-pulse">Initializing...</div>
         
-        <div id="videoList" class="space-y-3">
-            </div>
+        <div id="videoList" class="space-y-3"></div>
     </div>
 
     <script>
-        // On Load: Check if key exists in 'Magic Backpack' (LocalStorage)
-        window.onload = () => {
-            const savedKey = localStorage.getItem('shorts-vibe-key');
-            if (savedKey) {
-                document.getElementById('apiKeyInput').value = savedKey;
-                updateKeyStatus(true);
+        let currentMode = 'FREE'; // Starts in FREE mode
+        const freeInstances = [
+            'https://iv.melmac.space',
+            'https://invidious.flokinet.to',
+            'https://inv.riverside.rocks',
+            'https://iv.ggtyler.dev',
+            'https://invidious.projectsegfau.lt',
+            'https://invidious.io.lol'
+        ];
+
+        function toggleMode() {
+            const body = document.getElementById('mainBody');
+            const indicator = document.getElementById('toggleIndicator');
+            const apiBox = document.getElementById('apiBox');
+            const title = document.getElementById('appTitle');
+            const searchBtn = document.getElementById('searchBtn');
+
+            if (currentMode === 'FREE') {
+                // SWITCH TO PRO
+                currentMode = 'PRO';
+                indicator.style.left = '51%';
+                body.className = "bg-slate-950 text-white font-sans pb-20";
+                apiBox.className = "bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-sm mb-6 mode-transition opacity-100 grayscale-0";
+                title.className = "text-3xl font-extrabold text-emerald-500 tracking-tight transition-colors";
+                searchBtn.className = "bg-emerald-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-emerald-700 active:scale-95 transition-all shadow-lg shadow-emerald-900/20";
+            } else {
+                // SWITCH TO FREE
+                currentMode = 'FREE';
+                indicator.style.left = '4px';
+                body.className = "bg-gray-50 text-slate-900 font-sans pb-20";
+                apiBox.className = "bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mb-6 mode-transition opacity-50 grayscale pointer-events-none";
+                title.className = "text-3xl font-extrabold text-rose-600 tracking-tight transition-colors";
+                searchBtn.className = "bg-rose-600 text-white px-6 py-4 rounded-2xl font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-100";
             }
-        };
-
-        // Save key to local storage when user types it
-        document.getElementById('apiKeyInput').addEventListener('input', (e) => {
-            localStorage.setItem('shorts-vibe-key', e.target.value);
-            updateKeyStatus(!!e.target.value);
-        });
-
-        function updateKeyStatus(isSet) {
-            const status = document.getElementById('keyStatus');
-            status.innerText = isSet ? "✅ KEY SAVED" : "❌ NOT SET";
-            status.className = isSet ? "text-[10px] font-bold text-emerald-500" : "text-[10px] font-bold text-rose-300";
         }
 
         async function fetchShorts() {
             const query = document.getElementById('keyword').value;
-            const key = document.getElementById('apiKeyInput').value;
-            
-            if (!key) return alert("Please enter your YouTube API Key first!");
-            if (!query) return;
-
             const list = document.getElementById('videoList');
             const status = document.getElementById('status');
-            
+            if (!query) return;
+
             list.innerHTML = '';
             status.classList.remove('hidden');
 
-            try {
-                const searchQuery = encodeURIComponent(query + " shorts");
-                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${searchQuery}&type=video&videoDuration=short&maxResults=30&key=${key}`;
-
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                status.classList.add('hidden');
-
-                if (data.error) {
-                    alert("API Error: " + data.error.message);
+            if (currentMode === 'PRO') {
+                const key = document.getElementById('apiKeyInput').value;
+                if (!key) {
+                    alert("PRO Mode requires an API Key!");
+                    status.classList.add('hidden');
                     return;
                 }
-
-                data.items.forEach(item => {
-                    const id = item.id.videoId;
-                    const title = item.snippet.title;
-                    const channel = item.snippet.channelTitle;
-                    const thumb = item.snippet.thumbnails.medium.url; // Better for mobile
-                    const shortLink = `https://www.youtube.com/shorts/${id}`;
-
-                    list.innerHTML += `
-                        <a href="${shortLink}" target="_blank" class="flex items-center gap-4 bg-white p-3 rounded-2xl border border-gray-100 hover:border-rose-200 hover:shadow-md transition-all group">
-                            <img src="${thumb}" class="w-16 h-16 md:w-20 md:h-20 rounded-xl object-cover flex-shrink-0 shadow-sm">
-                            <div class="flex-1 min-w-0">
-                                <h3 class="text-sm font-bold text-gray-800 line-clamp-2 leading-tight group-hover:text-rose-600 transition-colors">${title}</h3>
-                                <p class="text-[11px] text-gray-400 mt-1 font-medium">@${channel}</p>
-                            </div>
-                            <div class="text-gray-300 group-hover:text-rose-600 pr-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-                            </div>
-                        </a>
-                    `;
-                });
-            } catch (error) {
-                status.innerText = "Error. Check connection.";
+                status.innerText = "🚀 PRO ENGINE: Fetching from Google...";
+                await fetchFromGoogle(query, key);
+            } else {
+                status.innerText = "☁️ FREE ENGINE: Rotating Mirrors...";
+                await fetchFromMirror(query);
             }
+        }
+
+        async function fetchFromGoogle(query, key) {
+            try {
+                const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query + " shorts")}&type=video&videoDuration=short&maxResults=30&key=${key}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                renderVideos(data.items.map(i => ({
+                    id: i.id.videoId,
+                    title: i.snippet.title,
+                    channel: i.snippet.channelTitle,
+                    thumb: i.snippet.thumbnails.medium.url
+                })));
+            } catch (e) {
+                document.getElementById('status').innerText = "Google API Error. Key valid?";
+            }
+        }
+
+        async function fetchFromMirror(query) {
+            for (let url of freeInstances) {
+                try {
+                    const response = await fetch(`${url}/api/v1/search?q=${encodeURIComponent(query + " shorts")}&type=video`);
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        renderVideos(data.slice(0, 30).map(i => ({
+                            id: i.videoId,
+                            title: i.title,
+                            channel: i.author,
+                            thumb: i.videoThumbnails[0].url
+                        })));
+                        return;
+                    }
+                } catch (e) { console.warn(`Mirror ${url} down.`); }
+            }
+            document.getElementById('status').innerText = "All free mirrors busy. Try PRO!";
+        }
+
+        function renderVideos(videos) {
+            const list = document.getElementById('videoList');
+            document.getElementById('status').classList.add('hidden');
+            videos.forEach(v => {
+                const cardBg = currentMode === 'PRO' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-100';
+                const textColor = currentMode === 'PRO' ? 'text-slate-100' : 'text-gray-800';
+                const accentColor = currentMode === 'PRO' ? 'group-hover:text-emerald-400' : 'group-hover:text-rose-600';
+
+                list.innerHTML += `
+                    <a href="https://www.youtube.com/shorts/${v.id}" target="_blank" class="flex items-center gap-4 ${cardBg} p-3 rounded-2xl border hover:shadow-md transition-all group">
+                        <img src="${v.thumb}" class="w-16 h-16 rounded-xl object-cover flex-shrink-0">
+                        <div class="flex-1 min-w-0 text-left">
+                            <h3 class="text-sm font-bold ${textColor} line-clamp-2 leading-tight ${accentColor}">${v.title}</h3>
+                            <p class="text-[11px] text-gray-400 mt-1">@${v.channel}</p>
+                        </div>
+                    </a>
+                `;
+            });
         }
     </script>
 </body>
